@@ -4,6 +4,7 @@
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#include <locale.h>
 #include "map.h"
 #include "dbuffer.h"
 #include "camera.h"
@@ -18,6 +19,7 @@ WINDOW *init_window(void)
 {
     WINDOW *win = 0;
 
+    setlocale(LC_ALL, "");
     initscr();
     cbreak();
     noecho();
@@ -76,7 +78,7 @@ void RayCasting(wchar_t *display, DataMap m, Camera cam)
         int nCeiling = (float)(LINES / 2.0) - LINES / ((float)(fDistanceToWall));
         int nFloor = LINES - nCeiling;
 
-        short nShade = ' ';
+        wchar_t nShade = ' ';
 		if (fDistanceToWall <= cam.Depth / 4.0f)			nShade = '#';
 		else if (fDistanceToWall < cam.Depth / 3.0f)		nShade = '$';
 		else if (fDistanceToWall < cam.Depth / 2.0f)		nShade = '/';

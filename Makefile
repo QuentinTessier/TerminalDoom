@@ -4,7 +4,7 @@ CC			= 	gcc
 
 INCLUDE		=	-Iinclude
 
-LIB			=	-lncurses -lm
+LIB			=	-lncursesw -lm
 
 CFLAGS		=	-Wall -Wextra $(INCLUDE) $(LIB)
 
