@@ -1,10 +1,3 @@
-/*
-** EPITECH PROJECT, 2019
-** TerminalDoom
-** File description:
-** player
-*/
-
 #pragma once
 
 typedef struct Camera {

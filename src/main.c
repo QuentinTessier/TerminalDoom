@@ -1,10 +1,3 @@
-/*
-** EPITECH PROJECT, 2019
-** TerminalDoom
-** File description:
-** main
-*/
-
 #include <stdbool.h>
 #include <stdlib.h>
 #include <ncurses.h>
@@ -15,11 +8,11 @@
 #include "dbuffer.h"
 #include "camera.h"
 
-const int nScreenW = 128;
+const int nScreenW = 269;
 const int nScreenH = 72;
 
 const int nMapWidth = 16;
-const int nMapHeight = 9;
+const int nMapHeight = 10;
 
 WINDOW *init_window(void)
 {
@@ -46,18 +39,10 @@ void handle_keyboard(WINDOW *win, const char *map, Camera *cam, bool *run)
     if (key == 'z') {
         cam->X += sinf(cam->Angle) * cam->speed;
         cam->Y += cosf(cam->Angle) * cam->speed;
-        if(map[(int)(cam->X * nMapWidth + cam->Y)] == '#') {
-            cam->X -= sinf(cam->Angle) * cam->speed;
-            cam->Y -= cosf(cam->Angle) * cam->speed;
-        }
     }
     if (key == 's') {
         cam->X -= sinf(cam->Angle) * cam->speed;
         cam->Y -= cosf(cam->Angle) * cam->speed;
-        if(map[(int)(cam->X * nMapWidth + cam->Y)] == '#') {
-            cam->X += sinf(cam->Angle) * cam->speed;
-            cam->Y += cosf(cam->Angle) * cam->speed;
-        }
     }
 }
 
@@ -83,7 +68,7 @@ void RayCasting(wchar_t *display, const char *map, Camera cam)
                 bHitWall = true;
                 fDistanceToWall = cam.Depth;
             } else {
-                if (map[nTestX * nMapWidth + nTestY] == '#') {
+                if (map[nTestY * nMapWidth + nTestX] == '#') {
                     bHitWall = true;
                 }
             }
@@ -119,21 +104,21 @@ void display_projection(WINDOW *win, wchar_t *display)
     }
 }
 
-void display_map(wchar_t *display, const char *map, Camera cam)
+void display_map(wchar_t *display, char *map, Camera cam)
 {
     int count = 0;
 
-    for (int i = 0; i < nMapHeight; i++) {
+    for (int i = 1; i < nMapHeight + 1; i++) {
         for (int j = 0; j < nMapWidth - 1; j++) {
             display[i * nScreenW + j] = (wchar_t)map[count];
             count++;
         }
         count++;
     }
-    display[(int)(cam.Y * nScreenW + cam.X)] = 'P';
+    display[(int)(((int)cam.Y + 1) * nScreenW + (int)cam.X)] = 'P';
 }
 
-int game_loop(WINDOW *win, const char *map)
+int game_loop(WINDOW *win, char *map)
 {
     bool run = true;
     wchar_t * display = malloc(sizeof(wchar_t) * nScreenH * nScreenW + 1);;
@@ -147,6 +132,7 @@ int game_loop(WINDOW *win, const char *map)
         RayCasting(display, map, cam);
         display_map(display, map, cam);
         display_projection(win, display);
+        mvwprintw(win, 0, 0, "(X: %.2f, Y: %.2f), Angle: %.2f", cam.X, cam.Y, cam.Angle);
         wmove(win, 0, 0);
         memset(display, 0, sizeof(wchar_t) * (nScreenW * nScreenH + 1));
         refresh();
