@@ -5,6 +5,8 @@
 #include <string.h>
 #include <time.h>
 #include <locale.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include "map.h"
 #include "dbuffer.h"
 #include "camera.h"
@@ -57,6 +59,7 @@ void RayCasting(wchar_t *display, DataMap m, Camera cam)
     bool bHitBound = false;
     float fEyeX = 0.f;
     float fEyeY = 0.f;
+    wchar_t nShade = ' ';
 
     for (int x = 0; x < COLS; x++) {
         fRayAngle = (cam.Angle - cam.FOV / 2.0f) + ((float)x / (float)COLS) * cam.FOV;
@@ -78,7 +81,7 @@ void RayCasting(wchar_t *display, DataMap m, Camera cam)
         int nCeiling = (float)(LINES / 2.0) - LINES / ((float)(fDistanceToWall));
         int nFloor = LINES - nCeiling;
 
-        wchar_t nShade = ' ';
+        nShade = ' ';
 		if (fDistanceToWall <= cam.Depth / 4.0f)			nShade = '#';
 		else if (fDistanceToWall < cam.Depth / 3.0f)		nShade = '$';
 		else if (fDistanceToWall < cam.Depth / 2.0f)		nShade = '/';
@@ -90,8 +93,16 @@ void RayCasting(wchar_t *display, DataMap m, Camera cam)
                 display[y * nScreenW + x] = ' ';
             else if (y > nCeiling && y <= nFloor)
                 display[y * nScreenW + x] = nShade;
-            else
-                display[y * nScreenW + x] = '-';
+            else {
+                float b = 1.0f - (((float)y - nScreenH / 2.0f) / ((float)nScreenH / 2.0f));
+                wchar_t floor_Shade = ' ';
+                if (b < 0.25)               floor_Shade = '-';
+                else if (b < 0.5)          floor_Shade = '-';
+                else if (b < 0.75)          floor_Shade = '.';
+                else if (b < 0.9)          floor_Shade = '.';
+                else                        floor_Shade = ' ';
+                display[y * nScreenW + x] = floor_Shade;
+            }
         }
         fDistanceToWall = 0.0f;
         bHitBound = false;
@@ -142,6 +153,20 @@ int game_loop(WINDOW *win, DataMap m)
     return (0);
 }
 
+int help(const char *av)
+{
+    char buffer[300];
+    ssize_t r;
+
+    if (strcmp(av, "-h") == 0) {
+        int fd = open("./assets/help.conf", O_RDONLY);
+        r = read(fd, buffer, 300);
+        write(1, buffer, r);
+        return (1);
+    }
+    return (0);
+}
+
 int main(int ac, char **av)
 {
     DataMap m;
@@ -150,6 +175,8 @@ int main(int ac, char **av)
         dprintf(2, "You need to give a map as argument\n");
         return (1);
     }
+    if (help(av[1]))
+        return (0);
     WINDOW *win = init_window();
     m = DataMap_new(av[1]);
     game_loop(win, m);
