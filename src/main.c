@@ -11,12 +11,6 @@
 #include "dbuffer.h"
 #include "camera.h"
 
-const int nScreenW = 269;
-const int nScreenH = 72;
-
-const int nMapWidth = 16;
-const int nMapHeight = 10;
-
 WINDOW *init_window(void)
 {
     WINDOW *win = 0;
@@ -29,7 +23,7 @@ WINDOW *init_window(void)
     return (win);
 }
 
-void handle_keyboard(WINDOW *win, Camera *cam, bool *run)
+void handle_keyboard(WINDOW *win, Camera *cam, bool *run, DataMap map)
 {
     float rotation = 0.2;
     int key = wgetch(win);
@@ -43,10 +37,18 @@ void handle_keyboard(WINDOW *win, Camera *cam, bool *run)
     if (key == 'z') {
         cam->X += sinf(cam->Angle) * cam->speed;
         cam->Y += cosf(cam->Angle) * cam->speed;
+        if (map.map[(int)cam->Y * map.X + (int)cam->X] == '#') {
+            cam->X -= sinf(cam->Angle) * cam->speed;
+            cam->Y -= cosf(cam->Angle) * cam->speed;
+        }
     }
     if (key == 's') {
         cam->X -= sinf(cam->Angle) * cam->speed;
         cam->Y -= cosf(cam->Angle) * cam->speed;
+        if (map.map[(int)cam->Y * map.X + (int)cam->X] == '#') {
+            cam->X += sinf(cam->Angle) * cam->speed;
+            cam->Y += cosf(cam->Angle) * cam->speed;
+        }
     }
 }
 
@@ -69,7 +71,7 @@ void RayCasting(wchar_t *display, DataMap m, Camera cam)
             fDistanceToWall += fSepSize;
             int nTestX = (int)(cam.X + fEyeX * fDistanceToWall);
             int nTestY = (int)(cam.Y + fEyeY * fDistanceToWall);
-            if (nTestX < 0 || nTestX >= m.X || nTestY < 0 || nTestY >= nMapHeight) {
+            if (nTestX < 0 || nTestX >= m.X || nTestY < 0 || nTestY >= m.Y) {
                 bHitWall = true;
                 fDistanceToWall = cam.Depth;
             } else {
@@ -82,26 +84,26 @@ void RayCasting(wchar_t *display, DataMap m, Camera cam)
         int nFloor = LINES - nCeiling;
 
         nShade = ' ';
-		if (fDistanceToWall <= cam.Depth / 4.0f)			nShade = '#';
-		else if (fDistanceToWall < cam.Depth / 3.0f)		nShade = '$';
+		if (fDistanceToWall <= cam.Depth / 4.0f)			nShade = '$';
+		else if (fDistanceToWall < cam.Depth / 3.0f)		nShade = '#';
 		else if (fDistanceToWall < cam.Depth / 2.0f)		nShade = '/';
 		else if (fDistanceToWall < cam.Depth)				nShade = ':';
 		else											    nShade = ' ';
 
         for (int y = 0; y < LINES; y++) {
             if (y < nCeiling)
-                display[y * nScreenW + x] = ' ';
+                display[y * COLS + x] = ' ';
             else if (y > nCeiling && y <= nFloor)
-                display[y * nScreenW + x] = nShade;
+                display[y * COLS + x] = nShade;
             else {
-                float b = 1.0f - (((float)y - nScreenH / 2.0f) / ((float)nScreenH / 2.0f));
+                float b = 1.0f - (((float)y - LINES / 2.0f) / ((float)LINES / 2.0f));
                 wchar_t floor_Shade = ' ';
                 if (b < 0.25)               floor_Shade = '-';
                 else if (b < 0.5)          floor_Shade = '-';
                 else if (b < 0.75)          floor_Shade = '.';
                 else if (b < 0.9)          floor_Shade = '.';
                 else                        floor_Shade = ' ';
-                display[y * nScreenW + x] = floor_Shade;
+                display[y * COLS + x] = floor_Shade;
             }
         }
         fDistanceToWall = 0.0f;
@@ -113,7 +115,7 @@ void RayCasting(wchar_t *display, DataMap m, Camera cam)
 void display_projection(WINDOW *win, wchar_t *display)
 {
     for (int i = 0; i < LINES; i++) {
-        wprintw(win, "%.*ls", nScreenW, display + i * nScreenW);
+        wprintw(win, "%.*ls", COLS, display + i * COLS);
     }
 }
 
@@ -121,31 +123,34 @@ void display_map(wchar_t *display, DataMap m, Camera cam)
 {
     int count = 0;
 
-    for (int i = 1; i < nMapHeight + 1; i++) {
+    for (int i = 1; i < m.Y; i++) {
         for (int j = 0; j < m.X - 1; j++) {
-            display[i * nScreenW + j] = (wchar_t)m.map[count];
+            display[i * COLS + j] = (wchar_t)m.map[count];
             count++;
         }
         count++;
     }
-    display[(int)(((int)cam.Y + 1) * nScreenW + (int)cam.X)] = 'P';
+    display[(int)(((int)cam.Y + 1) * COLS + (int)cam.X)] = 'P';
 }
 
 int game_loop(WINDOW *win, DataMap m)
 {
     bool run = true;
-    wchar_t * display = malloc(sizeof(wchar_t) * nScreenH * nScreenW + 1);;
+    wchar_t * display = malloc(sizeof(wchar_t) * LINES * 2 * COLS * 2 + 1);;
     Camera cam = Camera_new();
 
     keypad(win, TRUE);
-    memset(display, 0, sizeof(wchar_t) * (nScreenH * nScreenW + 1));
+    memset(display, 0, sizeof(wchar_t) * (LINES * COLS + 1));
     while (run) {
         clear();
-        handle_keyboard(win, &cam, &run);
+        handle_keyboard(win, &cam, &run, m);
         RayCasting(display, m, cam);
         display_map(display, m, cam);
         display_projection(win, display);
+        init_pair(1, COLOR_RED, COLOR_BLACK);
+        attron(COLOR_PAIR(1));
         mvwprintw(win, 0, 0, "(X: %.2f, Y: %.2f), Angle: %.2f", cam.X, cam.Y, cam.Angle);
+        attroff(COLOR_PAIR(1));
         wmove(win, 0, 0);
         memset(display, 0, sizeof(wchar_t) * (COLS * LINES + 1));
         refresh();
@@ -159,7 +164,7 @@ int help(const char *av)
     ssize_t r;
 
     if (strcmp(av, "-h") == 0) {
-        int fd = open("./assets/help.conf", O_RDONLY);
+        int fd = open("./src/help.conf", O_RDONLY);
         r = read(fd, buffer, 300);
         write(1, buffer, r);
         return (1);
@@ -178,6 +183,11 @@ int main(int ac, char **av)
     if (help(av[1]))
         return (0);
     WINDOW *win = init_window();
+    if (has_colors() == FALSE) {
+        endwin();
+        dprintf(2, "Your terminal doens't support color\n");
+        return (1);
+    }
     m = DataMap_new(av[1]);
     game_loop(win, m);
     endwin();
