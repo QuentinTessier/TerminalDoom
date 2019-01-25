@@ -176,6 +176,7 @@ int main(int ac, char **av)
 {
     DataMap m;
 
+    setlocale(LC_ALL, "");
     if (ac != 2) {
         dprintf(2, "You need to give a map as argument\n");
         return (1);
